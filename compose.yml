@@ -1,0 +1,35 @@
+---
+services:
+  transmission:
+    build: .
+    cap_add:
+    - NET_ADMIN
+    volumes:
+    - './data:/data'
+    - './config:/config'
+    - 'rpc:/rpc'
+    env_file:
+    - .env
+    environment:
+    - OPENVPN_PROVIDER=pia
+    - OPENVPN_CONFIG=netherlands
+    - PGID=998
+    - PUID=1000
+    - TRANSMISSION_DOWNLOAD_DIR=/data/downloads
+    - TRANSMISSION_INCOMPLETE_DIR=/data/incomplete
+    - TRANSMISSION_WATCH_DIR=/data/torrents
+    - TRANSMISSION_RPC_AUTHENTICATION_REQUIRED=false
+    - LOG_TO_STDOUT=true
+
+  socat:
+    image: alpine/socat
+    command: TCP-LISTEN:9091,fork UNIX-CONNECT:/rpc/transmission.sock
+    volumes:
+    - rpc:/rpc
+    ports:
+    - 9091:9091
+    depends_on:
+    - transmission
+
+volumes:
+  rpc:
