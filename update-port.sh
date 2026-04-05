@@ -25,7 +25,9 @@ TRANSMISSION_UNIX_SOCKET=""
 if jq -r '."rpc-bind-address"' "$transmission_settings_file" | grep -q unix: ; then
     echo "RPC Binding to unix socket"
     TRANSMISSION_HOST=$(jq -r '."rpc-bind-address"' "$transmission_settings_file" | sed -E 's/^unix://')
-    TRANSMISSION_UNIX_SOCKET="--unix-socket"
+    transmission-remote() {
+        command transmission-remote --unix-socket "$@"
+    }
 fi
 
 sleep 5
@@ -108,13 +110,13 @@ fi
 
 # make sure transmission is running and accepting requests
 echo "waiting for transmission to become responsive"
-until torrent_list="$(transmission-remote ${TRANSMISSION_UNIX_SOCKET} "${TRANSMISSION_HOST}" $myauth -l)"; do sleep 10; done
+until torrent_list="$(transmission-remote "${TRANSMISSION_HOST}" $myauth -l)"; do sleep 10; done
 echo "transmission became responsive"
 output="$(echo "$torrent_list" | tail -n 2)"
 echo "$output"
 
 # get current listening port
-transmission_peer_port=$(transmission-remote ${TRANSMISSION_UNIX_SOCKET} "${TRANSMISSION_HOST}" $myauth -si | grep Listenport | grep -oE '[0-9]+')
+transmission_peer_port=$(transmission-remote "${TRANSMISSION_HOST}" $myauth -si | grep Listenport | grep -oE '[0-9]+')
 if [[ "$new_port" != "$transmission_peer_port" ]]; then
   if [[ "true" = "$ENABLE_UFW" ]]; then
     echo "Update UFW rules before changing port in Transmission"
@@ -127,11 +129,11 @@ if [[ "$new_port" != "$transmission_peer_port" ]]; then
   fi
 
   echo "setting transmission port to $new_port"
-  transmission-remote ${TRANSMISSION_UNIX_SOCKET} "${TRANSMISSION_HOST}" ${myauth} -p "$new_port"
+  transmission-remote "${TRANSMISSION_HOST}" ${myauth} -p "$new_port"
 
   echo "Checking port..."
   sleep 10
-  transmission-remote ${TRANSMISSION_UNIX_SOCKET} "${TRANSMISSION_HOST}" ${myauth} -pt
+  transmission-remote "${TRANSMISSION_HOST}" ${myauth} -pt
 else
     echo "No action needed, port hasn't changed"
 fi
